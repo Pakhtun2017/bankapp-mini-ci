@@ -28,9 +28,9 @@ pipeline {
         script {
           withDockerRegistry(credentialsId: 'docker-cred') {
             sh '''
-						docker build -t bankapp/account:${GIT_COMMIT} -f Dockerfile.account .
-						dcker build -t bankapp/transaction:${GIT_COMMIT} -f Dockerfile.transaction .
-						'''
+              docker build -t bankapp/account:${GIT_COMMIT} -f Dockerfile.account .
+              docker build -t bankapp/transaction:${GIT_COMMIT} -f Dockerfile.transaction .
+            '''
           }
         }
       }
@@ -40,13 +40,15 @@ pipeline {
       steps {
         script {
           withDockerRegistry(credentialsId: 'docker-cred') {
-           sh '''
-					  docker tag bankapp/account:${GIT_COMMIT} bankapp/account:latest
-					  docker tag bankapp/transaction:${GIT_COMMIT} bankapp/transaction:latest
-					 '''
+            sh '''
+              docker tag bankapp/account:${GIT_COMMIT} bankapp/account:latest
+              docker tag bankapp/transaction:${GIT_COMMIT} bankapp/transaction:latest
+            '''
           }
+        }
       }
     }
+
   }
 }
 
