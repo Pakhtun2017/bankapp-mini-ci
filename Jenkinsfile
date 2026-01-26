@@ -7,8 +7,8 @@ pipeline {
 
   environment {
     REGISTRY = 'docker.io'
-    ACCOUNT_IMAGE = 'bankapp/account'
-    TRANSACTION_IMAGE = 'bankapp/transaction'
+	ACCOUNT_IMAGE = 'oolumee/account'
+	TRANSACTION_IMAGE = 'oolumee/transaction'
     IMAGE_TAG = "${GIT_COMMIT}"
   }
 
