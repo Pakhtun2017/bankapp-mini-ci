@@ -6,6 +6,13 @@ pipeline {
     jdk 'jdk21'
   }
 
+  environment {
+    REGISTRY = 'docker.io'
+    ACCOUNT_IMAGE = 'bankapp/account'
+    TRANSACTION_IMAGE = 'bankapp/transaction'
+    IMAGE_TAG = "${GIT_COMMIT}"
+  }
+
   stages {
 
     stage('Build account-service') {
@@ -26,30 +33,32 @@ pipeline {
 
     stage('Docker Build') {
       steps {
-        script {
-          withDockerRegistry(credentialsId: 'docker-cred') {
-            sh '''
-              docker build -t bankapp/account:${GIT_COMMIT} -f Dockerfile.account .
-              docker build -t bankapp/transaction:${GIT_COMMIT} -f Dockerfile.transaction .
-            '''
-          }
-        }
+        sh '''
+          docker build -t ${ACCOUNT_IMAGE}:${IMAGE_TAG} -f Dockerfile.account .
+          docker build -t ${TRANSACTION_IMAGE}:${IMAGE_TAG} -f Dockerfile.transaction .
+        '''
       }
     }
 
-    stage('Push Image') {
+    stage('Docker Push (commit tag only)') {
       steps {
-        script {
-          withDockerRegistry(credentialsId: 'docker-cred') {
-            sh '''
-              docker tag bankapp/account:${GIT_COMMIT} bankapp/account:latest
-              docker tag bankapp/transaction:${GIT_COMMIT} bankapp/transaction:latest
-            '''
-          }
+        withDockerRegistry(credentialsId: 'docker-cred', url: "https://${REGISTRY}") {
+          sh '''
+            docker push ${ACCOUNT_IMAGE}:${IMAGE_TAG}
+            docker push ${TRANSACTION_IMAGE}:${IMAGE_TAG}
+          '''
         }
       }
     }
+  }
 
+  post {
+    success {
+      echo "CI successful for commit ${GIT_COMMIT}"
+    }
+    failure {
+      echo "CI failed — merge blocked"
+    }
   }
 }
 
