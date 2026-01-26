@@ -6,9 +6,8 @@ pipeline {
   }
 
   environment {
-    REGISTRY = 'docker.io'
-	ACCOUNT_IMAGE = 'oolumee/account'
-	TRANSACTION_IMAGE = 'oolumee/transaction'
+    ACCOUNT_IMAGE = 'oolumee/account'
+    TRANSACTION_IMAGE = 'oolumee/transaction'
     IMAGE_TAG = "${GIT_COMMIT}"
   }
 
@@ -41,7 +40,7 @@ pipeline {
 
     stage('Docker Push (commit tag only)') {
       steps {
-        withDockerRegistry(credentialsId: 'docker-cred', url: "https://${REGISTRY}") {
+        withDockerRegistry(credentialsId: 'docker-cred') {
           sh '''
             docker push ${ACCOUNT_IMAGE}:${IMAGE_TAG}
             docker push ${TRANSACTION_IMAGE}:${IMAGE_TAG}
