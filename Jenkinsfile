@@ -40,7 +40,7 @@ pipeline {
 
     stage('Docker Push (commit tag only)') {
       steps {
-          withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/')
+          withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
 	  sh '''
             docker push ${ACCOUNT_IMAGE}:${IMAGE_TAG}
             docker push ${TRANSACTION_IMAGE}:${IMAGE_TAG}
