@@ -13,8 +13,10 @@ public class AccountApplication {
     @GetMapping("/account")
     public String getAccount() {
         if (auditEnabled) {
-            System.out.println("AUDIT: Account endpoint accessed");
-        }
+            System.out.println("AUDIT Enabled: /account endpoint accessed");
+        } else {
+	    System.out.println("AUDIT Disabled");
+	}
         return "Account balance: $1000";
     }
 }
