@@ -56,51 +56,50 @@ pipeline {
       }
     }
 
-stage('Extract Image Digests') {
-  steps {
-    sh '''
-      ACCOUNT_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${ACCOUNT_IMAGE}:${IMAGE_TAG})
-      TRANSACTION_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${TRANSACTION_IMAGE}:${IMAGE_TAG})
+    stage('Extract Image Digests') {
+      steps {
+        sh '''
+          ACCOUNT_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${ACCOUNT_IMAGE}:${IMAGE_TAG})
+          TRANSACTION_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${TRANSACTION_IMAGE}:${IMAGE_TAG})
 
-      echo "ACCOUNT_DIGEST=${ACCOUNT_DIGEST}" > digests.env
-      echo "TRANSACTION_DIGEST=${TRANSACTION_DIGEST}" >> digests.env
-    '''
-    stash name: 'image-digests', includes: 'digests.env'
-  }
-}
+          echo "ACCOUNT_DIGEST=${ACCOUNT_DIGEST}" > digests.env
+          echo "TRANSACTION_DIGEST=${TRANSACTION_DIGEST}" >> digests.env
+        '''
+        stash name: 'image-digests', includes: 'digests.env'
+      }
+    }
 
-stage('Update GitOps DEV') {
-  steps {
-    unstash 'image-digests'
+    stage('Update GitOps DEV') {
+      steps {
+        unstash 'image-digests'
 
-    withCredentials([usernamePassword(
-      credentialsId: 'git-cred',
-      usernameVariable: 'GIT_USER',
-      passwordVariable: 'GIT_TOKEN'
-    )]) {
-      sh '''
-        set -e
+        withCredentials([usernamePassword(
+          credentialsId: 'git-cred',
+          usernameVariable: 'GIT_USER',
+          passwordVariable: 'GIT_TOKEN'
+        )]) {
+          sh '''
+            set -e
+            . digests.env
 
-        . digests.env
+            git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
+            cd bankapp-mini-gitops
+            git checkout ${GITOPS_BRANCH}
 
-        git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
-        cd bankapp-mini-gitops
-        git checkout main
+            sed -i "s|image: .*account.*|image: ${ACCOUNT_DIGEST}|" ${DEV_PATH}/account-deployment.yaml
+            sed -i "s|image: .*transaction.*|image: ${TRANSACTION_DIGEST}|" ${DEV_PATH}/transaction-deployment.yaml
 
-        sed -i "s|image: .*account.*|image: ${ACCOUNT_DIGEST}|" dev/account-deployment.yaml
-        sed -i "s|image: .*transaction.*|image: ${TRANSACTION_DIGEST}|" dev/transaction-deployment.yaml
+            git config user.email "jenkins@ci.local"
+            git config user.name "jenkins-ci"
 
-        git config user.email "jenkins@ci.local"
-        git config user.name "jenkins-ci"
-
-        git add dev
-        git commit -m "dev: deploy images ${IMAGE_TAG}"
-        git push origin main
-      '''
+            git add ${DEV_PATH}
+            git commit -m "dev: deploy images ${IMAGE_TAG}"
+            git push origin ${GITOPS_BRANCH}
+          '''
+        }
+      }
     }
   }
-}
-
 
   post {
     success {
