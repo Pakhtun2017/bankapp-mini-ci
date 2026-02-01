@@ -80,6 +80,14 @@ pipeline {
         )]) {
           sh '''
             set -e
+
+	    echo "=== Workspace contents ==="
+  	    ls -la
+
+  	    echo "=== Looking for digests.env ==="
+  	    ls -la digests.env || (echo "digests.env missing" && exit 1)
+
+
             . digests.env
 
             git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
