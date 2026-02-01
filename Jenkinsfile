@@ -78,17 +78,16 @@ pipeline {
           usernameVariable: 'GIT_USER',
           passwordVariable: 'GIT_TOKEN'
         )]) {
-          sh '''
-            set -e
-            cd "$WORKSPACE"
-	    echo "=== Workspace contents ==="
-  	    ls -la
+sh '''
+  set -e
 
-  	    echo "=== Looking for digests.env ==="
-  	    ls -la digests.env || (echo "digests.env missing" && exit 1)
+  cd "$WORKSPACE"
 
+  echo "=== Workspace contents ==="
+  ls -la
 
-            . digests.env
+  echo "=== Loading digests ==="
+  . digests.env
 
             git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
             cd bankapp-mini-gitops
