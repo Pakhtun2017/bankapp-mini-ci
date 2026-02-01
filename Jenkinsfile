@@ -80,7 +80,7 @@ pipeline {
         )]) {
           sh '''
             set -e
-
+            cd "$WORKSPACE"
 	    echo "=== Workspace contents ==="
   	    ls -la
 
