@@ -79,7 +79,7 @@ pipeline {
           sh '''
             set -e
 
-            source digests.env
+            . digests.env
 
             git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
             cd bankapp-mini-gitops
