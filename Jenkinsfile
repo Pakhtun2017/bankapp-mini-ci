@@ -85,8 +85,8 @@ pipeline {
   	 . "$WORKSPACE/digests.env"
 
 	    rm -rf gitops
-            git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
-            cd bankapp-mini-gitops
+            git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git gitops
+            cd gitops
             git checkout ${GITOPS_BRANCH}
 
             sed -i "s|image: .*account.*|image: ${ACCOUNT_DIGEST}|" ${DEV_PATH}/account-deployment.yaml
