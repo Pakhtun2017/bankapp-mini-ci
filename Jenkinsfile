@@ -6,21 +6,34 @@ pipeline {
   }
 
   environment {
-    // Image names
     ACCOUNT_IMAGE = 'oolumee/account'
     TRANSACTION_IMAGE = 'oolumee/transaction'
 
-    // GitOps repo
-    GITOPS_REPO = 'https://github.com/Pakhtun2017/bankapp-mini-gitops.git'
+    GITOPS_REPO   = 'https://github.com/Pakhtun2017/bankapp-mini-gitops.git'
     GITOPS_BRANCH = 'main'
-    DEV_PATH = 'dev'
+    DEV_PATH      = 'dev'
 
     IMAGE_TAG = "${GIT_COMMIT}"
   }
 
   stages {
 
+    stage('Branch Guard') {
+      steps {
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            echo "Main branch detected — skipping CI build and GitOps updates."
+            currentBuild.result = 'SUCCESS'
+            return
+          }
+        }
+      }
+    }
+
     stage('Build account-service') {
+      when {
+        not { branch 'main' }
+      }
       steps {
         dir('account-service') {
           sh 'mvn -q clean package'
@@ -29,6 +42,9 @@ pipeline {
     }
 
     stage('Build transaction-service') {
+      when {
+        not { branch 'main' }
+      }
       steps {
         dir('transaction-service') {
           sh 'mvn -q clean package'
@@ -37,6 +53,9 @@ pipeline {
     }
 
     stage('Docker Build') {
+      when {
+        not { branch 'main' }
+      }
       steps {
         sh '''
           docker build -t ${ACCOUNT_IMAGE}:${IMAGE_TAG} -f Dockerfile.account .
@@ -46,6 +65,9 @@ pipeline {
     }
 
     stage('Docker Push') {
+      when {
+        not { branch 'main' }
+      }
       steps {
         withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
           sh '''
@@ -57,6 +79,9 @@ pipeline {
     }
 
     stage('Extract Image Digests') {
+      when {
+        branch 'develop'
+      }
       steps {
         sh '''
           ACCOUNT_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${ACCOUNT_IMAGE}:${IMAGE_TAG})
@@ -65,12 +90,17 @@ pipeline {
           echo "ACCOUNT_DIGEST=${ACCOUNT_DIGEST}" > digests.env
           echo "TRANSACTION_DIGEST=${TRANSACTION_DIGEST}" >> digests.env
         '''
-        archiveArtifacts artifacts: 'digests.env'
+        stash name: 'image-digests', includes: 'digests.env'
       }
     }
 
     stage('Update GitOps DEV') {
+      when {
+        branch 'develop'
+      }
       steps {
+        unstash 'image-digests'
+
         withCredentials([usernamePassword(
           credentialsId: 'git-cred',
           usernameVariable: 'GIT_USER',
@@ -78,11 +108,11 @@ pipeline {
         )]) {
           sh '''
             set -e
+            . "$WORKSPACE/digests.env"
 
-            source digests.env
-
-            git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
-            cd bankapp-mini-gitops
+            rm -rf gitops
+            git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git gitops
+            cd gitops
             git checkout ${GITOPS_BRANCH}
 
             sed -i "s|image: .*account.*|image: ${ACCOUNT_DIGEST}|" ${DEV_PATH}/account-deployment.yaml
@@ -92,7 +122,7 @@ pipeline {
             git config user.name "jenkins-ci"
 
             git add ${DEV_PATH}
-            git commit -m "dev: deploy images for ${IMAGE_TAG}"
+            git commit -m "dev: deploy images ${IMAGE_TAG}"
             git push origin ${GITOPS_BRANCH}
           '''
         }
@@ -102,10 +132,10 @@ pipeline {
 
   post {
     success {
-      echo "CI complete — GitOps DEV updated. ArgoCD will deploy."
+      echo "CI completed successfully for ${BRANCH_NAME}"
     }
     failure {
-      echo "CI failed — GitOps not touched."
+      echo "CI failed — no GitOps changes applied"
     }
   }
 }
