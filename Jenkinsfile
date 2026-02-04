@@ -65,36 +65,40 @@ pipeline {
           echo "ACCOUNT_DIGEST=${ACCOUNT_DIGEST}" > digests.env
           echo "TRANSACTION_DIGEST=${TRANSACTION_DIGEST}" >> digests.env
         '''
-        archiveArtifacts artifacts: 'digests.env'
+        stash name: 'image-digests', includes: 'digests.env'
       }
     }
 
     stage('Update GitOps DEV') {
       steps {
+        unstash 'image-digests'
+
         withCredentials([usernamePassword(
           credentialsId: 'git-cred',
           usernameVariable: 'GIT_USER',
           passwordVariable: 'GIT_TOKEN'
         )]) {
-          sh '''
-            set -e
+	sh '''
+  	 set -e
 
-            source digests.env
+         echo "=== Loading digests ==="
+  	 . "$WORKSPACE/digests.env"
 
-            git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git
-            cd bankapp-mini-gitops
-            git checkout ${GITOPS_BRANCH}
+	    rm -rf gitops
+        git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/Pakhtun2017/bankapp-mini-gitops.git gitops
+        cd gitops
+        git checkout ${GITOPS_BRANCH}
 
-            sed -i "s|image: .*account.*|image: ${ACCOUNT_DIGEST}|" ${DEV_PATH}/account-deployment.yaml
-            sed -i "s|image: .*transaction.*|image: ${TRANSACTION_DIGEST}|" ${DEV_PATH}/transaction-deployment.yaml
+        sed -i "s|image: .*account.*|image: ${ACCOUNT_DIGEST}|" ${DEV_PATH}/account-deployment.yaml
+        sed -i "s|image: .*transaction.*|image: ${TRANSACTION_DIGEST}|" ${DEV_PATH}/transaction-deployment.yaml
 
-            git config user.email "jenkins@ci.local"
-            git config user.name "jenkins-ci"
+        git config user.email "jenkins@ci.local"
+        git config user.name "jenkins-ci"
 
-            git add ${DEV_PATH}
-            git commit -m "dev: deploy images for ${IMAGE_TAG}"
-            git push origin ${GITOPS_BRANCH}
-          '''
+        git add ${DEV_PATH}
+        git commit -m "dev: deploy images ${IMAGE_TAG}"
+        git push origin ${GITOPS_BRANCH}
+      '''
         }
       }
     }
