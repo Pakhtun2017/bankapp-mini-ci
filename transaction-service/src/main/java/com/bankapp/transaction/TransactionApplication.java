@@ -13,6 +13,10 @@ public class TransactionApplication {
     @Value("${DB_TIMEOUT:100}")
     private int timeout;
 
+    @Value("${ENABLE_TX_AUDIT:false}")
+    private boolean txAuditEnabled;
+
+
     public static void main(String[] args) {
         SpringApplication.run(TransactionApplication.class, args);
     }
